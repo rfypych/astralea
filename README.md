@@ -99,6 +99,52 @@ FOR EACH ROW
 EXECUTE PROCEDURE public.update_updated_at_column();
 ```
 
+### 2.2. Konfigurasi Supabase Storage (untuk v3.0+)
+
+Fitur unggah gambar memerlukan konfigurasi Supabase Storage.
+
+1.  Di dashboard Supabase Anda, navigasikan ke **Storage**.
+2.  Klik **New Bucket**.
+3.  Beri nama bucket `user_images` dan atur sebagai **Public**.
+4.  Setelah bucket dibuat, navigasikan ke **Policies**.
+5.  Buat kebijakan-kebijakan berikut untuk mengizinkan pengguna mengelola gambar mereka sendiri dengan aman:
+
+    *   **Kebijakan untuk Melihat Gambar:**
+        *   Policy Name: `Allow authenticated users to view images`
+        *   Allowed operations: `SELECT`
+        *   Policy definition: `(bucket_id = 'user_images') AND (auth.role() = 'authenticated')`
+
+    *   **Kebijakan untuk Mengunggah Gambar:**
+        *   Policy Name: `Allow users to upload to their own folder`
+        *   Allowed operations: `INSERT`
+        *   Policy definition: `(bucket_id = 'user_images') AND (auth.uid()::text = (storage.foldername(name))[1])`
+
+    *   **Kebijakan untuk Memperbarui/Menghapus Gambar:**
+        *   Policy Name: `Allow users to update/delete their own images`
+        *   Allowed operations: `UPDATE`, `DELETE`
+        *   Policy definition: `(bucket_id = 'user_images') AND (auth.uid()::text = (storage.foldername(name))[1])`
+
+### 2.3. Migrasi ke v3.0 (Tabel Pengalaman Bersama)
+
+Fitur "Pengalaman Bersama" memerlukan tabel baru. Jalankan skrip SQL berikut:
+```sql
+CREATE TABLE public.shared_experiences (
+    id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    activity_type TEXT NOT NULL, -- 'movie', 'song', etc.
+    item_details JSONB,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Kebijakan RLS
+ALTER TABLE public.shared_experiences ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can manage their own shared experiences."
+ON public.shared_experiences
+FOR ALL
+USING (auth.uid() = user_id);
+```
+
 ### 3. Variabel Lingkungan
 
 Buat file `.env` di dalam direktori `backend/` dan isi dengan variabel berikut:
@@ -108,6 +154,10 @@ MISTRAL_API_KEY="YOUR_MISTRAL_API_KEY"
 SUPABASE_URL="YOUR_SUPABASE_PROJECT_URL"
 SUPABASE_KEY="YOUR_SUPABASE_ANON_KEY"
 PROACTIVE_TRIGGER_SECRET="YOUR_SECRET_KEY_FOR_CRON_JOB"
+
+# Kunci API untuk v3.0+ Tool Use
+OPENWEATHER_API_KEY="YOUR_OPENWEATHERMAP_API_KEY"
+NEWSAPI_API_KEY="YOUR_NEWSAPI_API_KEY"
 ```
 
 ---

@@ -69,3 +69,24 @@ def retrieve_memories(user_id: str, query_message: str, num_results: int = 3) ->
     except Exception as e:
         print(f"ERROR: Failed to retrieve memories for user {user_id}. Error: {e}")
         return "", []
+
+def retrieve_shared_experiences(user_id: str, num_results: int = 5) -> str:
+    """
+    Mengambil pengalaman bersama terbaru untuk pengguna.
+    """
+    try:
+        response = supabase.table('shared_experiences').select('activity_type, item_details').eq('user_id', user_id).order('created_at', desc=True).limit(num_results).execute()
+
+        if not response.data:
+            return ""
+
+        formatted_experiences = []
+        for item in response.data:
+            details = item.get('item_details', {})
+            title = details.get('title', 'an item')
+            formatted_experiences.append(f"- You both shared a {item['activity_type']}: {title}")
+
+        return "\n".join(formatted_experiences)
+    except Exception as e:
+        print(f"ERROR: Failed to retrieve shared experiences for user {user_id}: {e}")
+        return ""

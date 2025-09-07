@@ -7,3 +7,4 @@ sentence-transformers
 vaderSentiment
 supabase
 gotrue
+beautifulsoup4
