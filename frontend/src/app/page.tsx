@@ -24,18 +24,39 @@ function ChatInterface({ session, supabase }: { session: Session; supabase: Supa
 
   useEffect(() => { scrollToBottom(); }, [messages]);
 
-  // Ambil skor awal saat komponen dimuat
+  // Ambil data awal (skor & pesan proaktif) saat komponen dimuat
   useEffect(() => {
-    const fetchInitialScore = async () => {
-        const { data, error } = await supabase
-            .from('profiles')
-            .select('chemistry_score')
-            .eq('id', session.user.id)
-            .single();
-        if (data) setChemistryScore(data.chemistry_score ?? 0);
+    const fetchInitialData = async () => {
+      // Ambil skor awal
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('chemistry_score')
+        .eq('id', session.user.id)
+        .single();
+      if (profileData) setChemistryScore(profileData.chemistry_score ?? 0);
+
+      // Cek pesan proaktif
+      try {
+        const response = await fetch("http://127.0.0.1:8000/api/get_proactive_message", {
+          method: "GET",
+          headers: {
+            "Authorization": `Bearer ${session.access_token}`,
+          },
+        });
+        if (response.ok) {
+          const data = await response.json();
+          if (data.message) {
+            const proactiveMessage: Message = { sender: 'ai', text: data.message };
+            setMessages(prev => [proactiveMessage, ...prev]);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch proactive message:", error);
+      }
     };
-    fetchInitialScore();
-  }, [session.user.id, supabase]);
+
+    fetchInitialData();
+  }, [session.user.id, session.access_token, supabase]);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();

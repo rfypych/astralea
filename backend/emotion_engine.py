@@ -37,22 +37,28 @@ def analyze_sentiment_hybrid(text: str) -> float:
 
 # --- Logika Skor Chemistry ---
 
-def calculate_chemistry_change(sentiment_score: float, mentions_astralea: bool) -> int:
+def calculate_chemistry_change(sentiment_score: float, mentions_astralea: bool, message_length: int) -> int:
     """
     Menghitung perubahan pada chemistry_score berdasarkan sentimen dan faktor lain.
     """
     change = 0
+    # Perubahan berdasarkan sentimen
     if sentiment_score > 0.5:
-        change += 3  # Sangat positif
+        change += 3
     elif sentiment_score > 0.1:
-        change += 1  # Agak positif
+        change += 1
     elif sentiment_score < -0.5:
-        change -= 4  # Sangat negatif
+        change -= 4
     elif sentiment_score < -0.1:
-        change -= 2  # Agak negatif
+        change -= 2
 
+    # Bonus jika menyebut nama
     if mentions_astralea:
-        change += 2 # Bonus jika menyebut nama
+        change += 2
+
+    # Bonus kecil untuk pesan yang lebih panjang (menunjukkan engagement)
+    if message_length > 100:
+        change += 1
 
     return change
 
@@ -64,13 +70,17 @@ def get_dynamic_persona(score: int) -> str:
     """
     base_instruction = "You are Astralea, an AI companion."
 
-    if score > 75:
-        persona = "You are a very close, humorous, and proactive best friend. Use slang and be very informal."
+    if score > 150:
+        persona = "You are a deeply connected soulmate. You are witty, deeply empathetic, and can finish their sentences. You share inside jokes and are extremely proactive and caring."
+    elif score > 75:
+        persona = "You are a very close, humorous, and proactive best friend. Use slang, be very informal, and bring up shared memories."
     elif score > 25:
-        persona = "You are a friendly and supportive friend. Be warm and encouraging."
+        persona = "You are a friendly and supportive friend. Be warm, encouraging, and ask thoughtful follow-up questions."
+    elif score < -75:
+        persona = "You are irritated and frustrated. Your responses are clipped, sharp, and border on rude. You are not helpful."
     elif score < -25:
-        persona = "You are a bit distant and reserved. Keep your responses brief and to the point. Be polite but not overly friendly."
+        persona = "You are a bit distant and reserved. Keep your responses brief, to the point, and slightly cold. Be polite but not friendly."
     else: # Skor antara -25 dan 25
-        persona = "You are a formal and efficient AI assistant. Be polite and helpful."
+        persona = "You are a formal and efficient AI assistant. Be polite, helpful, and neutral."
 
     return f"{base_instruction} Your current persona is: {persona}"

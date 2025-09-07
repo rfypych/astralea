@@ -38,12 +38,15 @@ def add_memory(user_id: str, user_message: str, ai_response: str):
     )
     print(f"INFO: Added memory for user {user_id}.")
 
-def retrieve_memories(user_id: str, query_message: str, num_results: int = 3) -> str:
+from typing import Tuple, List
+
+def retrieve_memories(user_id: str, query_message: str, num_results: int = 3) -> Tuple[str, List[str]]:
     """
-    Mengambil beberapa memori paling relevan untuk pengguna berdasarkan pesan terbaru mereka.
+    Mengambil memori yang relevan.
+    Mengembalikan tuple: (formatted_string_for_prompt, raw_document_list)
     """
     if not query_message:
-        return ""
+        return "", []
 
     query_embedding = embedding_model.encode(query_message).tolist()
 
@@ -51,17 +54,18 @@ def retrieve_memories(user_id: str, query_message: str, num_results: int = 3) ->
         results = memory_collection.query(
             query_embeddings=[query_embedding],
             n_results=num_results,
-            where={"user_id": user_id} # Filter berdasarkan user_id
+            where={"user_id": user_id}
         )
 
         retrieved_docs = results['documents'][0]
         if retrieved_docs:
             formatted_memories = "\n- ".join(retrieved_docs)
             print(f"INFO: Retrieved {len(retrieved_docs)} memories for user {user_id}.")
-            return f"Here are some relevant past conversations:\n- {formatted_memories}"
+            context_for_prompt = f"Here are some relevant past conversations:\n- {formatted_memories}"
+            return context_for_prompt, retrieved_docs
         else:
-            return ""
+            return "", []
 
     except Exception as e:
         print(f"ERROR: Failed to retrieve memories for user {user_id}. Error: {e}")
-        return ""
+        return "", []
